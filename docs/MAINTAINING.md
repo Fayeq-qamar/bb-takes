@@ -53,6 +53,6 @@ To change the password: compute the new hash and replace `HASH` in `server/gate.
 ```
 /usr/bin/python3 -c 'import hashlib,getpass; print(hashlib.sha256(("bb-takes/gate/v1:"+getpass.getpass()).encode()).hexdigest())'
 ```
-This is a light gate for a private tool, not encryption: anyone with the code can remove the check, and a short
-password can be guessed from its hash. Real protection is keeping the repo private and the zip within the team.
+This is a light gate, not encryption: anyone with the code can remove the check, and a short
+password can be guessed from its hash. The repo is public, so treat everything in it as readable by anyone.
 
