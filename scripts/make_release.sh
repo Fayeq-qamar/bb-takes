@@ -9,6 +9,6 @@ for t in ffmpeg ffprobe logocr; do [ -x "bin/$t" ] || { echo "bin/$t missing: pu
 git archive --format=tar --prefix="BB_Takes/" HEAD | tar -x -C "$TMP"
 cp bin/ffmpeg bin/ffprobe bin/logocr "$TMP/BB_Takes/bin/"
 mkdir -p dist; rm -f "$OUT"
-(cd "$TMP" && ditto -c -k --sequesterRsrc --keepParent BB_Takes "$OLDPWD/$OUT")
+(cd "$TMP" && ditto -c -k --norsrc --noextattr --keepParent BB_Takes "$OLDPWD/$OUT")
 rm -rf "$TMP"; ls -la "$OUT"
 echo "To publish it for the team:  gh release create v$V \"$OUT\" --title \"BB Takes $V\" --notes-file CHANGELOG.md"
