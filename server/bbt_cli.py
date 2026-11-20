@@ -67,6 +67,7 @@ def readlogs(d):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"): print(__doc__); sys.exit(0)
+    import gate; gate.require()
     cmd = sys.argv[1]; arg = sys.argv[2] if len(sys.argv) > 2 else ""
     plain = {"status": status, "scene": scene, "day": day, "readlogs": readlogs}
     js = {"prep": prep, "export": export, "still": still}

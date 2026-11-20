@@ -5,6 +5,10 @@ description: Use BB Takes (this folder) to get things out of the Beta Builder sh
 
 # BB Takes recipes
 
+**Password first.** Run `/usr/bin/python3 server/gate.py status`. If `locked`, ask the user for the BB Takes
+password, then `/usr/bin/python3 server/gate.py unlock "<their answer>"`. Never guess it, never bypass the gate,
+never repeat the password back or write it anywhere. Nothing else works until it's unlocked (12 hours per Mac).
+
 Run from the BB Takes folder with `/usr/bin/python3 server/bbt_cli.py …` (sandbox off: it reads the shoot server).
 Every command prints JSON. The shoot server is read-only; outputs land in `~/Movies/BB Takes Exports/`.
 First time on a Mac: `bash scripts/setup.sh`.

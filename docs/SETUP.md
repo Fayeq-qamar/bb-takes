@@ -9,6 +9,11 @@
 
 Nothing else gets installed. ffmpeg comes inside the zip.
 
+## The password
+BB Takes is locked with a team password (ask the BB Takes maintainer for it). Claude asks you for it when you
+start; double-clicking `Start BB Takes.command` asks in its window. One correct entry unlocks that Mac for 12 hours.
+To lock again early: `/usr/bin/python3 server/gate.py lock`.
+
 ## Route A: with Claude (recommended)
 1. Unzip `BB_Takes_vX.Y.Z.zip` somewhere you'll find it (e.g. `~/Documents/BB_Takes`).
 2. Open that folder in Claude Code (desktop app: open folder; terminal: `cd` into it and run `claude`).

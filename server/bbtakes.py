@@ -707,6 +707,7 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True; allow_reuse_address = True
 
 if __name__ == "__main__":
+    import gate; gate.require()
     srv = Server(("127.0.0.1", PORT), H)
     threading.Thread(target=lambda: os.path.isdir(root()) and scenes_all(), daemon=True).start()  # warm the scene list
     print(f"BB Takes {VERSION} running at http://127.0.0.1:{PORT}  (server root: {root()})", flush=True)

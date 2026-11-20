@@ -43,3 +43,16 @@ Add them to `seeds/known_takes.json` (scene → day → shots → takes with a `
 ## Where the logic lives
 See `HOW_IT_WORKS.md`. The parts most likely to need care: `logsheets.parse_page` (log layouts),
 `bbtakes.prepare_log` (log → clips), `bbtakes.sync` (sound matching), `bbtakes.export` (renders).
+
+## The password gate
+`server/gate.py` keeps a salted SHA-256 hash of the team password, never the password itself. Every entry point
+(`bbt_cli.py`, the app server, `setup.sh`, `Start BB Takes.command`) refuses to run until `gate.py unlock` has
+succeeded on that Mac (valid 12 hours, stored in `~/Library/Caches/BB Takes/unlock.json`).
+
+To change the password: compute the new hash and replace `HASH` in `server/gate.py`, then release:
+```
+/usr/bin/python3 -c 'import hashlib,getpass; print(hashlib.sha256(("bb-takes/gate/v1:"+getpass.getpass()).encode()).hexdigest())'
+```
+This is a light gate for a private tool, not encryption: anyone with the code can remove the check, and a short
+password can be guessed from its hash. Real protection is keeping the repo private and the zip within the team.
+

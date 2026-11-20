@@ -7,6 +7,11 @@ warn() { printf "  \033[33m!\033[0m %s\n" "$1"; }
 bad() { printf "  \033[31m✗\033[0m %s\n" "$1"; BLOCK=1; }
 BLOCK=0
 echo "BB Takes $(cat VERSION 2>/dev/null) setup check"
+if ! /usr/bin/python3 server/gate.py status >/dev/null 2>&1; then
+  echo "  BB Takes is locked. Unlock it first with the team password:"
+  echo "    /usr/bin/python3 server/gate.py unlock <password>     (or double-click Start BB Takes.command)"
+  exit 3
+fi
 
 # 1. Mac + chip
 if [ "$(uname)" != "Darwin" ]; then bad "BB Takes runs on macOS only."; fi
