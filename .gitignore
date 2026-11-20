@@ -1,0 +1,8 @@
+# Big binaries ship in the release zip, not in git (see docs/MAINTAINING.md)
+bin/ffmpeg
+bin/ffprobe
+bin/logocr
+dist/
+__pycache__/
+*.pyc
+.DS_Store

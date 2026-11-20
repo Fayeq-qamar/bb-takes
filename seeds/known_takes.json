@@ -1,0 +1,11 @@
+{
+ "152": {"day": "DAY_06", "shots": [
+   {"shot": "1", "note": "Gang celebrates down the gully; Jai spots Ajit and peels off (no log sheet on the server)",
+    "takes": [{"primary": "A026C001"}, {"primary": "A026C002"}, {"primary": "A026C003"}, {"primary": "A026C004"}, {"primary": "A026C005"}, {"primary": "A026C006"}]}]},
+ "152A": {"day": "Day_03", "shots": [
+   {"shot": "1", "note": "Ajit slumped on the toilet steps, Jai arrives (8 cameras)",
+    "takes": [{"primary": "A014C006"}, {"primary": "A014C007", "ok": true}, {"primary": "A014C008"}]},
+   {"shot": "2", "note": "Gimbal leading: Jai carries Ajit toward camera (Cam A only)",
+    "takes": [{"primary": "A014C009"}, {"primary": "A014C010"}, {"primary": "A014C011"}, {"primary": "A014C012"}]},
+   {"shot": "3", "note": "Gimbal following them down the lane (Cam A only)", "takes": [{"primary": "A014C013"}]}]}
+}

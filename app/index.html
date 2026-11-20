@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BB Takes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: grading-suite console. Find (scene → takes) left, player centre, export right. */
+:root{
+  --bg:#121417; --panel:#1a1d21; --raised:#23272c; --line:#2f343b;
+  --fg:#e6e8eb; --muted:#8b939d; --accent:#e9a23b; --accent-ink:#1b1305;
+  --mark:#4fc0d0; --ok:#6cc58a; --warn:#e07b5f; --live:#e5484d;
+  --f-ui:"Archivo",system-ui,-apple-system,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);font:14px/1.45 var(--f-ui);margin:0}
+.wrap{padding:14px 16px 40px;max-width:1800px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:12px}
+h1{font-size:20px;font-weight:700;margin:0}
+.pill{font:600 11px var(--f-ui);padding:3px 9px;border-radius:10px;letter-spacing:.04em}
+.pill.ok{background:rgb(108 197 138/.16);color:var(--ok)} .pill.bad{background:rgb(224 123 95/.16);color:var(--warn)}
+.spacer{flex:1}
+button,select,input,textarea{font:inherit}
+.btn{background:var(--raised);border:1px solid var(--line);color:var(--fg);border-radius:5px;padding:6px 10px;font:600 12px var(--f-ui);cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.mark{border-color:var(--mark);color:var(--mark)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,.take:focus-visible,.scene:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+select,input[type=text],input[type=search]{background:var(--raised);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:6px 8px;font-size:13px}
+textarea{width:100%;min-height:52px;resize:vertical;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:7px;font-size:13px}
+.grid{display:grid;grid-template-columns:300px minmax(0,1fr) 300px;gap:14px;align-items:start}
+.grid.wide{grid-template-columns:300px minmax(0,1fr)}
+@media (max-width:1200px){.grid,.grid.wide{grid-template-columns:260px minmax(0,1fr)}.side{grid-column:1/-1}}
+@media (max-width:760px){.grid,.grid.wide{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;min-width:0}
+.panel h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 8px}
+.find{display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 90px);overflow:auto}
+.searchrow{display:flex;gap:6px}.searchrow input{flex:1;min-width:0}
+.scenes,.takes{display:flex;flex-direction:column;gap:5px}
+.scene{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:7px 9px;cursor:pointer;text-align:left;color:var(--fg)}
+.scene b{display:block;font-size:13px}.scene span{display:block;color:var(--muted);font-size:11px}
+.scene[aria-current="true"]{border-color:var(--accent)}
+.logs{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.logs a{font-size:11px;color:var(--mark);text-decoration:none;border:1px solid var(--line);border-radius:3px;padding:0 5px}
+.take{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:6px;cursor:pointer;text-align:left;color:var(--fg)}
+.take img{width:96px;aspect-ratio:16/9;object-fit:cover;background:#000;border-radius:3px;display:block}
+.take b{display:block;font:600 12px var(--f-mono)}
+.take span{display:block;color:var(--muted);font-size:11px}
+.take .tag{display:inline-block;background:rgb(233 162 59/.18);color:var(--accent);font:700 10px var(--f-ui);padding:0 6px;border-radius:8px;margin-top:2px}
+.take[aria-current="true"]{border-color:var(--accent);background:var(--raised)}
+.dayrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted);font-size:12px}
+.prog{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}.prog i{display:block;height:100%;background:var(--accent);width:0}
+.player{min-width:0}
+.empty-player{display:grid;place-items:center;min-height:300px;border:1px dashed var(--line);border-radius:6px;color:var(--muted);text-align:center;padding:20px}
+.titleline{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin-bottom:8px}
+.titleline b{font:600 15px var(--f-mono)} .titleline span{color:var(--muted);font-size:12px}
+.modes{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.mode[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.stage{position:relative;width:100%;overflow:hidden;background:#000;border-radius:6px;border:1px solid var(--line)}
+.stage video{position:absolute;display:block;object-fit:fill;background:#000}
+.stage.ghost{position:fixed;left:0;bottom:0;width:160px;opacity:.01;pointer-events:none;z-index:-1;border:0}
+.glabels{position:absolute;inset:0;display:grid;pointer-events:none}
+.glabels span{align-self:start;justify-self:start;margin:6px;font:600 12px var(--f-ui);color:#ffd400;background:rgb(0 0 0/.65);padding:2px 6px;border-radius:3px;max-width:calc(100% - 12px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hint{position:absolute;inset:auto 8px 8px auto;font:12px var(--f-mono);color:var(--fg);background:rgb(0 0 0/.6);padding:2px 6px;border-radius:4px;pointer-events:none}
+.cams{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.cam{background:var(--panel);border:1px solid var(--line);color:var(--fg);border-radius:5px;padding:5px 9px;font:600 12px var(--f-ui);cursor:pointer}
+.cam[aria-pressed="true"]{background:var(--mark);color:#06181b;border-color:var(--mark)}
+.transport{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-top:10px}
+.tc{font:600 13px var(--f-mono);font-variant-numeric:tabular-nums}.tc.dim{color:var(--muted);font-weight:400}
+.scrub{position:relative;flex:1 1 260px;height:28px;min-width:160px}
+.scrub input{position:absolute;inset:0;width:100%;margin:0;opacity:0;cursor:pointer}
+.track{position:absolute;left:0;right:0;top:12px;height:4px;background:var(--line);border-radius:2px;pointer-events:none}
+.range{position:absolute;top:8px;height:12px;background:rgb(79 192 208/.28);border-left:2px solid var(--mark);border-right:2px solid var(--mark);pointer-events:none}
+.head{position:absolute;top:4px;width:2px;height:20px;background:var(--accent);pointer-events:none;transform:translateX(-1px)}
+.src{margin-top:8px;color:var(--muted);font:12px var(--f-mono);overflow-x:auto;white-space:nowrap}.src b{color:var(--fg)}
+.sync{margin-top:4px;color:var(--muted);font-size:12px}.sync .bad{color:var(--warn)}
+.keys{margin-top:8px;color:var(--muted);font-size:12px}
+kbd{font:11px var(--f-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;color:var(--fg)}
+.mv{display:grid;grid-template-columns:2fr 1fr;gap:8px;align-items:start;max-width:calc(64vh * 16 / 9 * 1.5)}
+@media (max-width:760px){.mv{grid-template-columns:minmax(0,1fr)}}
+.srcs{display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:0}
+.pgm{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:2px solid var(--live);border-radius:6px;overflow:hidden}
+.pgm canvas{display:block;width:100%;height:100%}
+.pgm .tagl{position:absolute;left:10px;top:10px;background:var(--live);color:#fff;font:700 12px var(--f-ui);letter-spacing:.08em;padding:3px 9px;border-radius:3px}
+.pgm .rectag{position:absolute;right:10px;top:10px;color:var(--live);font:700 12px var(--f-mono);background:rgb(0 0 0/.6);padding:3px 8px;border-radius:3px}
+.tile{position:relative;display:block;width:100%;padding:0;border:2px solid var(--line);border-radius:4px;overflow:hidden;background:#000;cursor:pointer;min-width:0}
+.tile canvas{display:block;width:100%;aspect-ratio:16/9}
+.tile .num{position:absolute;left:5px;top:5px;font:700 12px var(--f-mono);background:rgb(0 0 0/.7);color:var(--fg);padding:0 6px;border-radius:3px}
+.tile.live{border-color:var(--live)}.tile.live .num{background:var(--live);color:#fff}
+.cutpanel{margin-top:10px}
+.btn.rec[aria-pressed="true"]{background:var(--live);border-color:var(--live);color:#fff}
+#follow[aria-pressed="true"]{background:var(--mark);border-color:var(--mark);color:#06181b}
+.strip{position:relative;height:18px;background:var(--bg);border:1px solid var(--line);border-radius:3px;overflow:hidden;margin-top:10px}
+.seg{position:absolute;top:0;bottom:0;font:700 10px var(--f-mono);color:#0b0d10;display:flex;align-items:center;padding-left:3px;overflow:hidden;border-right:1px solid var(--bg)}
+.strip .phead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sheetwrap canvas{display:block;width:100%;height:auto;max-height:64vh;object-fit:contain;background:#000;border:1px solid var(--line);border-radius:6px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px}
+.chip{background:var(--raised);border:1px solid var(--line);color:var(--fg);border-radius:12px;padding:3px 10px;font:600 12px var(--f-ui);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--mark);border-color:var(--mark);color:#06181b}
+.lab{display:block;color:var(--muted);font-size:12px;margin:10px 0 4px}
+.opt{display:grid;grid-template-columns:80px minmax(0,1fr);gap:6px 10px;align-items:center;font-size:13px;margin:8px 0}
+.opt label{color:var(--muted)}
+.labels{display:grid;grid-template-columns:28px minmax(0,1fr);gap:4px 6px;align-items:center}
+.labels b{font:600 12px var(--f-mono)} .labels input{width:100%}
+.io{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}.io dt{color:var(--muted)}.io dd{margin:0}
+.info{font-size:12px;color:var(--muted);margin-top:6px}.info .warn{color:var(--warn);display:block}
+.exports{list-style:none;margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.exp{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:7px 9px;font-size:12px;min-width:0}
+.exp b{display:block;font-size:12px;overflow-wrap:anywhere}.exp .m{color:var(--muted)}.exp .e{color:var(--warn);overflow-wrap:anywhere}
+.status{font-size:12px;color:var(--muted);min-height:1.3em;margin-top:6px}.status.err{color:var(--warn)}
+.scenehead{display:flex;flex-direction:column;gap:3px;margin:12px 0 8px}
+.scenehead h2{font-size:18px;color:var(--fg);text-transform:none;letter-spacing:0;margin:0}
+.scenehead .btn{align-self:flex-start;margin-top:6px}
+.shot{border-top:1px solid var(--line);padding:10px 0}
+.shothead{display:flex;gap:8px;align-items:baseline}.shothead b{font-size:14px}
+.shotnote{font-size:12px;color:var(--fg);opacity:.85;margin-top:3px}
+.coverage{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:5px;font-size:11px;color:var(--muted)}
+.coverage b{color:var(--fg);font-family:var(--f-mono)}
+.tk{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tkbtn{background:var(--raised);border:1px solid var(--line);color:var(--fg);border-radius:5px;padding:4px 9px;font:600 12px var(--f-mono);cursor:pointer}
+.tkbtn.ok{background:rgb(108 197 138/.16);border-color:var(--ok);color:var(--ok)}
+.tkbtn.ready{border-style:dashed}
+.tkbtn[aria-current="true"]{outline:2px solid var(--accent);outline-offset:1px}
+.legend{font-size:11px;color:var(--muted);margin-top:8px}
+.browse{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.browse summary{cursor:pointer;color:var(--muted);font-size:12px}
+.logview{position:fixed;inset:0;background:rgb(10 11 13/.94);z-index:50;display:flex;flex-direction:column;padding:12px 16px}
+.logbar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.logbody{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.logbody img{max-width:100%;max-height:100%;object-fit:contain;background:#fff}
+.logbody iframe{width:100%;height:100%;border:0;background:#fff}
+.shotline{color:var(--muted);font-size:12px;margin:-4px 0 8px}
+.scenegrid{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;max-height:150px;overflow:auto}
+.sc{background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:4px;padding:1px 6px;font:600 11px var(--f-mono);cursor:pointer}
+.sc.has{color:var(--fg);border-color:#3b4048}
+.sc[aria-current="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.daypick{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.daypick .btn{align-self:flex-start}
+[hidden]{display:none!important}
+</style></head>
+<body><div class="wrap">
+<header>
+  <h1>BB Takes <small class="muted" id="ver"></small></h1>
+  <span class="pill" id="srvPill">checking server…</span>
+  <span class="muted" id="srvRoot"></span>
+  <span class="spacer"></span>
+  <button class="btn" id="setRoot" type="button">Server folder…</button>
+  <button class="btn" id="openExports" type="button">Open exports folder</button>
+</header>
+<div class="grid" id="grid">
+  <!-- FIND -->
+  <aside class="panel find" aria-label="Find a scene">
+    <div class="searchrow"><input type="search" id="q" placeholder="Scene number, e.g. 217 or 152A" autocomplete="off"><button class="btn primary" id="go" type="button">Find</button></div>
+    <div class="scenegrid" id="sceneGrid" aria-label="All scenes"></div>
+    <div class="legend">Bright = shots and OK takes from the log sheet · dim = folder only</div>
+    <div id="sceneBox"></div>
+    <details class="browse" id="browse">
+      <summary>All clips of a day</summary>
+      <div class="muted" style="margin:6px 0">For scenes without a log sheet. <select id="daySel" aria-label="Shoot day"><option value="">Pick a day</option></select></div>
+      <div id="dayBox" hidden>
+        <div class="dayrow"><label class="muted"><input type="checkbox" id="hideShort" checked> Hide clips under 8 s</label><button class="btn" id="rescan" type="button">Rescan</button></div>
+        <div id="scanBox" hidden><div class="muted" id="scanMsg"></div><div class="prog"><i id="scanBar"></i></div></div>
+        <div class="takes" id="takes" style="margin-top:8px"></div>
+      </div>
+    </details>
+  </aside>
+  <!-- PLAYER -->
+  <section class="player">
+    <div class="empty-player" id="emptyPlayer"><div><b>Find a scene, pick a take.</b><br><span class="muted">Each take's cameras are lined up by sound, then you can watch, cut live, build a video sheet and export full quality.</span></div></div>
+    <div id="prepBox" hidden class="panel"><b id="prepTitle">Preparing take</b><div class="muted" id="prepMsg"></div><div class="prog"><i id="prepBar"></i></div></div>
+    <div id="playerBox" hidden>
+      <div class="titleline"><b id="takeTitle"></b><span id="takeSub"></span></div>
+      <div class="modes">
+        <button class="btn mode" type="button" data-mode="view" aria-pressed="true">Viewer</button>
+        <button class="btn mode" type="button" data-mode="switch" aria-pressed="false">Switcher (live cut)</button>
+        <button class="btn mode" type="button" data-mode="sheet" aria-pressed="false">Video sheet</button>
+      </div>
+      <div class="mv" id="mv" hidden>
+        <div class="pgm"><canvas id="pgmCanvas" width="640" height="360"></canvas><span class="tagl" id="pgmTag">LIVE</span><span class="rectag" id="recTag" hidden>● REC</span></div>
+        <div class="srcs" id="srcs"></div>
+      </div>
+      <div class="sheetwrap" id="sheetWrap" hidden><canvas id="sheetCanvas" width="1280" height="360" aria-label="Video sheet preview"></canvas></div>
+      <div class="stage" id="stage"><video id="vid" playsinline preload="auto"></video><div class="glabels" id="glabels"></div><span class="hint" id="hint">Grid</span></div>
+      <div class="cams" id="cams"></div>
+      <div class="transport">
+        <button class="btn primary" id="play" type="button">Play</button>
+        <button class="btn" id="back" type="button" title="Back 1 frame (←)">−1f</button>
+        <button class="btn" id="fwd" type="button" title="Forward 1 frame (→)">+1f</button>
+        <span class="tc" id="now">00:00:00:00</span><span class="tc dim" id="dur">/ 00:00:00:00</span>
+        <div class="scrub"><div class="track"></div><div class="range" id="range" hidden></div><div class="head" id="head"></div>
+          <input type="range" id="seek" min="0" max="1000" step="1" value="0" aria-label="Scrub"></div>
+        <button class="btn mark" id="setIn" type="button">In <kbd>I</kbd></button>
+        <button class="btn mark" id="setOut" type="button">Out <kbd>O</kbd></button>
+        <button class="btn" id="loop" type="button">Play in→out</button>
+        <button class="btn mark" id="still" type="button" title="Save this frame as a 4K still (P)">Still 4K <kbd>P</kbd></button>
+        <select id="rate" aria-label="Speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option></select>
+      </div>
+      <div class="panel cutpanel" id="cutPanel" hidden>
+        <div class="row">
+          <button class="btn rec" id="rec" type="button" aria-pressed="false">● Record cuts <kbd>R</kbd></button>
+          <button class="btn" id="follow" type="button" aria-pressed="false">Play back my cut</button>
+          <button class="btn" id="clearCuts" type="button">Clear</button>
+          <span class="muted" id="cutInfo">Press Record, play, and hit 1–8 to cut.</span>
+        </div>
+        <div class="strip" id="strip"><div class="phead" id="phead"></div></div>
+      </div>
+      <div class="src" id="src"></div>
+      <div class="sync" id="sync"></div>
+      <div class="keys"><kbd>Space</kbd> play · <kbd>←</kbd><kbd>→</kbd> 1 frame (<kbd>Shift</kbd> 1 s) · <kbd>I</kbd>/<kbd>O</kbd> in/out · <kbd>1</kbd>–<kbd>8</kbd> camera (Switcher: cut · Sheet: toggle) · <kbd>G</kbd> grid · <kbd>S</kbd> Switcher · <kbd>R</kbd> record cuts · <kbd>P</kbd> 4K still</div>
+    </div>
+  </section>
+  <!-- EXPORT -->
+  <aside class="panel side" id="side" aria-label="Export">
+    <h2 id="expTitle">Export</h2>
+    <dl class="io"><dt>In</dt><dd class="tc" id="xIn">not set</dd><dt>Out</dt><dd class="tc" id="xOut">not set</dd><dt>Length</dt><dd class="tc" id="xLen">–</dd></dl>
+    <div id="expCams">
+      <label class="lab">Cameras</label><div class="chips" id="xCams"></div>
+    </div>
+    <div id="expSheet" hidden>
+      <label class="lab">Cameras</label><div class="chips" id="shCams"></div>
+      <div class="opt">
+        <label for="shLayout">Layout</label>
+        <select id="shLayout"><option value="auto" selected>Auto</option><option value="row">One row</option><option value="2">2 across</option><option value="3">3 across</option><option value="4">4 across</option></select>
+        <label for="shLabels">Labels</label>
+        <select id="shLabels"><option value="custom" selected>Show labels</option><option value="none">No labels</option></select>
+        <label for="shTitle">Title bar</label><input type="checkbox" id="shTitle" checked>
+        <label for="shAudio">Sound</label><input type="checkbox" id="shAudio" checked>
+      </div>
+      <div id="shLabelEdit"><label class="lab">Panel labels</label><div class="labels" id="shLabelList"></div></div>
+      <label class="lab" for="shTitleText">Title text</label><input type="text" id="shTitleText" style="width:100%">
+    </div>
+    <div id="expCut" hidden><p class="muted" id="cutSummary">Record a cut in the Switcher, then export it here.</p></div>
+    <div class="opt"><label for="fmt">Format</label>
+      <select id="fmt"><option value="h264" selected>H.264 (.mp4)</option><option value="prores">ProRes 422 HQ (.mov)</option></select></div>
+    <div class="info" id="xInfo"></div>
+    <div class="row" style="margin-top:10px"><button class="btn primary" id="doExport" type="button">Export</button></div>
+    <div class="status" id="xStatus"></div>
+    <ul class="exports" id="exports"><li class="muted" id="expEmpty">Exports land in Movies › BB Takes Exports.</li></ul>
+  </aside>
+</div></div>
+<div class="logview" id="logView" hidden role="dialog" aria-label="Log sheet">
+  <div class="logbar"><button class="btn" id="logPrev" type="button">‹ Prev</button><span class="tc" id="logCount"></span><button class="btn" id="logNext" type="button">Next ›</button>
+    <a class="btn" id="logOpen" target="_blank" rel="noopener">Open full size</a><span class="spacer"></span><button class="btn primary" id="logClose" type="button">Close</button></div>
+  <div class="logbody"><img id="logImg" alt="Log sheet page"><iframe id="logPdf" title="Log sheet PDF" hidden></iframe></div>
+</div>
+
+<script>
+const FPS = 25, $ = id => document.getElementById(id), vid = $("vid"), stage = $("stage");
+const CAMCOL = ["#e9a23b", "#4fc0d0", "#9b8cf0", "#6cc58a", "#e57aa8", "#d9d36a", "#7fa7f5", "#e07b5f", "#b0b0b0", "#c08a5a"];
+let g = null, curDay = null, curScene = "", takes = [], focus = -1, mIn = null, mOut = null, loopOn = false;
+let mode = "view", live = 0, recOn = false, cuts = [], cutEnd = null, follow = false, xSel = new Set(), shSel = new Set(), shLab = {}, srcCtx = [];
+const pgmCtx = $("pgmCanvas").getContext("2d"), shCtx = $("sheetCanvas").getContext("2d");
+const tc = s => { if (s == null || isNaN(s)) return "–"; let f = Math.round(s * FPS); const ff = f % FPS; f = (f - ff) / FPS;
+  return [Math.floor(f / 3600), Math.floor(f / 60) % 60, f % 60, ff].map(n => String(n).padStart(2, "0")).join(":"); };
+const tod = s => s == null ? "no TC" : tc(s).slice(0, 8);
+const api = async (p, body) => { const r = await fetch(p, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.statusText); return j; };
+const waitJob = (id, onp) => new Promise((res, rej) => { const t = setInterval(async () => { try { const j = await api("/api/job?id=" + id); onp && onp(j);
+  if (j.state === "done") { clearInterval(t); res(j.result); } else if (j.state === "error") { clearInterval(t); rej(new Error(j.error)); } } catch (e) { clearInterval(t); rej(e); } }, 500); });
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+
+/* ---------- server status ---------- */
+async function status() {
+  try { const s = await api("/api/status"); $("ver").textContent = s.version ? "v" + s.version : ""; $("srvPill").textContent = s.mounted ? "Server connected" : "Server not found";
+    $("srvPill").className = "pill " + (s.mounted ? "ok" : "bad"); $("srvRoot").textContent = s.root;
+    const ds = $("daySel"); ds.length = 1; (s.days || []).forEach(d => ds.append(new Option(d.day, d.day)));
+  } catch (e) { $("srvPill").textContent = "Tool not running"; $("srvPill").className = "pill bad"; }
+}
+$("setRoot").onclick = async () => { const r = window.prompt ? window.prompt("Shoot server folder", $("srvRoot").textContent) : null; if (!r) return;
+  try { await api("/api/root", { root: r }); status(); } catch (e) { alert(e.message); } };
+$("openExports").onclick = () => api("/api/openexports", {});
+
+/* ---------- find ---------- */
+let findToken = 0, logPages = [], logIdx = 0;
+async function findScene() {
+  const q = $("q").value.trim().replace(/^sc(ene)?\s*/i, "").toUpperCase().replace(/^0+(?=.)/, ""); if (!q) return; curScene = q; const my = ++findToken;
+  try { history.replaceState(null, "", "#" + encodeURIComponent(q)); } catch (e) {}
+  const box = $("sceneBox"); box.innerHTML = ""; box.append(el("div", "muted", `Looking for Sc ${q}…`));
+  let r; try { r = await api("/api/scene?q=" + encodeURIComponent(q)); } catch (e) { box.innerHTML = ""; box.append(el("div", "muted", e.message)); return; }
+  if (my !== findToken) return; renderScene(r); markScene();
+}
+function renderScene(r) {
+  const box = $("sceneBox"); box.innerHTML = "";
+  if (r.folders.length && !r.days.length) {
+    renderSceneHead(box, r);
+    [...new Set(r.folders.map(f => f.day))].forEach(day => box.append(dayPicker(day))); return;
+  }
+  if (!r.folders.length && !r.days.length) { box.append(el("div", "muted", `Sc ${r.scene} isn't on the server's log sheets or scene folders. Try "All clips of a day" below.`)); return; }
+  renderSceneHead(box, r);
+  r.days.forEach(d => {
+    if (d.needsLogs) { const w = el("div", "muted"); w.append(document.createTextNode(`${d.day}: log sheets not read yet. `));
+      const b = el("button", "btn", "Read them"); b.type = "button"; b.onclick = async () => { b.disabled = true; b.textContent = "Reading…";
+        try { const j = await api("/api/readlogs", { day: d.day }); await waitJob(j.id); findScene(); } catch (e) { b.textContent = "Failed: " + e.message; } }; w.append(b); box.append(w); return; }
+    if (!d.shots.length) { box.append(dayPicker(d.day)); return; }
+    d.shots.forEach(s => {
+      const card = el("div", "shot"); const h = el("div", "shothead"); h.append(el("b", "", s.shot === "?" ? "Shot ?" : `Shot ${s.shot}`));
+      if (r.days.length > 1) h.append(el("span", "muted", d.day));
+      card.append(h);
+      if (s.note) card.append(el("div", "shotnote", s.note));
+      const cov = el("div", "coverage"); s.cams.forEach(c => { const x = el("span", ""); x.append(el("b", "", c.cam), document.createTextNode(" " + (c.desc || "–").toLowerCase())); cov.append(x); }); card.append(cov);
+      const tk = el("div", "tk");
+      s.takes.forEach(t => { const b = el("button", "tkbtn" + (t.ok ? " ok" : ""), (t.ok ? "✓ " : "") + "T" + t.n); b.type = "button";
+        b.title = `Take ${t.n}${t.ok ? " (OK on the log sheet)" : ""} · ${Object.entries(t.clips).map(([c, v]) => c + " " + v.slice(4)).join(", ")}${t.ready ? " · ready" : ""}`;
+        if (t.ready) b.classList.add("ready");
+        b.onclick = () => { document.querySelectorAll(".tkbtn").forEach(x => x.setAttribute("aria-current", "false")); b.setAttribute("aria-current", "true");
+          openLogTake(d.day, s, t, r.scene); };
+        tk.append(b); });
+      card.append(tk); box.append(card); });
+  });
+  if (r.days.some(d => d.shots && d.shots.length)) box.append(el("div", "legend", "✓ = OK take on the log sheet · dashed = already prepared (opens instantly)"));
+}
+function renderSceneHead(box, r) {
+  const head = el("div", "scenehead"); head.append(el("h2", "", `Sc ${r.scene}`));
+  r.folders.forEach(f => head.append(el("div", "muted", `${f.location.replace(/_/g, " ").toLowerCase()} · ${f.day.replace("_", " ")}`)));
+  const logs = r.folders.flatMap(f => f.logs);
+  if (logs.length) { const b = el("button", "btn", `Log sheet (${logs.length} page${logs.length > 1 ? "s" : ""})`); b.type = "button"; b.onclick = () => openLogs(logs); head.append(b); }
+  box.append(head);
+}
+function dayPicker(day) {
+  const w = el("div", "daypick");
+  w.append(el("div", "muted", `No readable log sheet rows for this scene on ${day.replace("_", " ")}. List every take shot that day and pick by time and cameras (the log sheet button above helps).`));
+  const b = el("button", "btn primary", `List ${day.replace("_", " ")}'s takes`); b.type = "button";
+  b.onclick = () => { $("browse").open = true; $("daySel").value = day; openDay(day); $("browse").scrollIntoView({ behavior: "smooth", block: "start" }); };
+  w.append(b); return w;
+}
+$("go").onclick = findScene; $("q").onkeydown = e => { if (e.key === "Enter") findScene(); };
+async function loadSceneGrid() {
+  let r; try { r = await api("/api/scenes_all"); } catch (e) { return; }
+  const box = $("sceneGrid"); box.innerHTML = "";
+  r.scenes.forEach(s => { const b = el("button", "sc" + (s.has ? " has" : ""), s.scene); b.type = "button"; b.title = s.where.join(" | ");
+    b.onclick = () => { $("q").value = s.scene; findScene(); }; box.append(b); });
+  markScene();
+}
+function markScene() { document.querySelectorAll(".sc").forEach(b => b.setAttribute("aria-current", String(b.textContent === curScene))); }
+
+async function openLogTake(day, s, t, scene) {
+  const labels = {}; s.cams.forEach(c => labels[c.cam] = c.desc || "");
+  const title = `Sc ${scene} · Shot ${s.shot} · Take ${t.n}${t.ok ? " ✓ OK" : ""}`;
+  await runPrepare(`Preparing ${title}`, "/api/prepare_log", { day, clips: t.clips, labels, title }, s.note);
+  t.ready = true;
+}
+async function runPrepare(label, url, body, note) {
+  const my = ++prepToken; vid.pause(); $("emptyPlayer").hidden = true; $("playerBox").hidden = true; $("prepBox").hidden = false;
+  $("prepTitle").textContent = label; $("prepBar").style.width = "0"; $("prepMsg").textContent = "Starting";
+  try { const j = await api(url, body); const man = await waitJob(j.id, s => { if (my !== prepToken) return; $("prepBar").style.width = (s.progress * 100) + "%"; $("prepMsg").textContent = s.msg; });
+    if (my !== prepToken) return; $("prepBox").hidden = true; $("playerBox").hidden = false; load(man, note || ""); }
+  catch (e) { if (my === prepToken) $("prepMsg").textContent = "Couldn't prepare this take: " + e.message; }
+}
+let prepToken = 0;
+
+/* log sheet viewer */
+function openLogs(list) { logPages = list; logIdx = 0; showLog(); $("logView").hidden = false; }
+function showLog() { const p = logPages[logIdx]; const url = "/api/serverfile?rel=" + encodeURIComponent(p);
+  $("logImg").hidden = /\.pdf$/i.test(p); $("logPdf").hidden = !/\.pdf$/i.test(p);
+  if (/\.pdf$/i.test(p)) $("logPdf").src = url; else $("logImg").src = url;
+  $("logCount").textContent = `${logIdx + 1} / ${logPages.length}`; $("logOpen").href = url; }
+$("logPrev").onclick = () => { logIdx = (logIdx - 1 + logPages.length) % logPages.length; showLog(); };
+$("logNext").onclick = () => { logIdx = (logIdx + 1) % logPages.length; showLog(); };
+$("logClose").onclick = () => $("logView").hidden = true;
+document.addEventListener("keydown", e => { if ($("logView").hidden) return; if (e.key === "Escape") $("logClose").click();
+  else if (e.key === "ArrowRight") { e.stopImmediatePropagation(); $("logNext").click(); } else if (e.key === "ArrowLeft") { e.stopImmediatePropagation(); $("logPrev").click(); } }, true);
+
+/* whole-day browsing (fallback) */
+let dayToken = 0;
+$("daySel").onchange = e => { if (e.target.value) openDay(e.target.value); };
+$("hideShort").onchange = renderTakes;
+async function openDay(day, rescan) {
+  const my = ++dayToken; curDay = day; $("dayBox").hidden = false; $("takes").innerHTML = "";
+  let d = rescan ? null : await api("/api/day?day=" + encodeURIComponent(day));
+  if (my !== dayToken) return;
+  if (!d || !d.takes) {
+    $("scanBox").hidden = false; $("scanMsg").textContent = `Reading every clip of ${day} (about 2 minutes, once)…`;
+    try { const j = await api("/api/scan", { day }); d = await waitJob(j.id, s => { if (my !== dayToken) return; $("scanBar").style.width = (s.progress * 100) + "%"; $("scanMsg").textContent = s.msg; }); }
+    catch (e) { if (my === dayToken) $("scanMsg").textContent = "Couldn't read the day: " + e.message; return; }
+    if (my !== dayToken) return; $("scanBox").hidden = true;
+  }
+  takes = d.takes; renderTakes();
+}
+$("rescan").onclick = () => curDay && openDay(curDay, true);
+function renderTakes() {
+  const box = $("takes"); box.innerHTML = ""; const hide = $("hideShort").checked;
+  const list = takes.filter(t => !hide || t.dur >= 8);
+  if (!list.length) box.append(el("div", "muted", "No clips."));
+  list.forEach(t => { const b = el("div", "take"); b.tabIndex = 0; b.setAttribute("role", "button");
+    const img = el("img"); img.loading = "lazy"; img.alt = ""; img.src = `/api/thumb?rel=${encodeURIComponent(t.clips[0].rel)}&t=${Math.min(t.clips[0].dur / 2, 30).toFixed(1)}`;
+    const info = el("div"); info.append(el("b", "", t.ref.slice(0, 8)), el("span", "", `${tod(t.start)} · ${Math.round(t.dur)} s`), el("span", "", t.cams.join(" ")));
+    b.append(img, info); const go = () => runPrepare(`Preparing ${t.ref.slice(0, 8)}`, "/api/prepare", { day: t.day, take: t.id }); b.onclick = go; b.onkeydown = e => { if (e.key === "Enter") go(); }; box.append(b); });
+}
+
+/* ---------- player ---------- */
+function load(man, note) {
+  g = man; g.scene = curScene; focus = -1; mIn = mOut = null; loopOn = false; live = 0; recOn = false; cuts = []; cutEnd = null; follow = false;
+  $("loop").textContent = "Play in→out"; vid.src = man.src; vid.playbackRate = +$("rate").value;
+  const lab = c => c.desc ? `${c.cam} · ${c.desc.toLowerCase()}` : `Cam ${c.cam}`;
+  $("takeTitle").textContent = man.title || `${man.day} · ${man.id.split("__").pop()}`;
+  $("takeSub").textContent = [note, `${man.day.replace("_", " ")} · ${tc(man.dur)} · clip ${man.cams[0].clip.slice(0, 8)}`].filter(Boolean).join(" · ");
+  xSel = new Set(man.cams.map(c => c.cam)); shSel = new Set(man.cams.filter(c => c.cam.length === 1).map(c => c.cam)); shLab = {}; man.cams.forEach(c => shLab[c.cam] = lab(c));
+  $("shTitleText").value = (man.title || "").replace(" ✓ OK", "") || `${man.day} ${man.cams[0].clip.slice(0, 8)}`;
+  const gl = $("glabels"); gl.innerHTML = ""; gl.style.gridTemplateColumns = `repeat(${g.cols},1fr)`; gl.style.gridTemplateRows = `repeat(${g.rows},1fr)`;
+  g.cams.forEach(c => gl.append(el("span", "", lab(c))));
+  $("cams").innerHTML = "";
+  if (g.cams.length > 1) { const all = el("button", "cam", "Grid"); all.type = "button"; all.dataset.i = -1; all.onclick = () => { focus = -1; layout(); }; $("cams").append(all);
+    g.cams.forEach((c, i) => { const b = el("button", "cam", `${i + 1} · ${lab(c)}`); b.type = "button"; b.dataset.i = i; b.onclick = () => { focus = i; layout(); }; $("cams").append(b); }); }
+  const bad = g.cams.filter(c => c.sync !== "ref" && c.sync !== "audio");
+  $("sync").innerHTML = "";
+  $("sync").append(document.createTextNode(g.cams.length < 2 ? "Single camera." : bad.length ? "Synced by sound, except " : "All cameras synced by sound."));
+  if (bad.length) $("sync").append(el("span", "bad", bad.map(c => `Cam ${c.cam} (${c.sync})`).join(", ")));
+  if (g.excluded && g.excluded.length) $("sync").append(document.createTextNode(` · Left out (sound didn't match): ${g.excluded.join(", ")}`));
+  if (g.notes && g.notes.length) $("sync").append(el("div", "", "Log vs footage: " + g.notes.join(" · ")));
+  const multi = g.cams.length > 1; document.querySelector('.mode[data-mode="switch"]').disabled = !multi; if (!multi && mode === "switch") mode = "view";
+  buildTiles(); layout(); updMarks(); renderCuts(); tick();
+}
+
+function layout() {
+  if (!g) return;
+  const c = g.cols, r = g.rows, sw = mode === "switch", sh = mode === "sheet", ov = sw || sh;
+  $("mv").hidden = !sw; $("cutPanel").hidden = !sw; $("sheetWrap").hidden = !sh; $("cams").hidden = ov; stage.classList.toggle("ghost", ov);
+  $("glabels").hidden = ov || focus >= 0 || g.cams.length < 2;
+  document.querySelectorAll(".mode").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+  $("expCams").hidden = ov; $("expSheet").hidden = !sh; $("expCut").hidden = !sw;
+  $("expTitle").textContent = sw ? "Export live cut" : sh ? "Export video sheet (4K)" : "Export cameras";
+  if (ov) { $("hint").hidden = true; stage.style.aspectRatio = `${c * 16} / ${r * 9}`; Object.assign(vid.style, { width: "100%", height: "100%", left: "0", top: "0" });
+    if (sw) { tally(); drawPgm(); } else { buildSheetCtl(); drawSheet(); } xInfo(); return; }
+  $("hint").hidden = false;
+  if (focus < 0 || g.cams.length === 1) { stage.style.aspectRatio = `${c * 16} / ${r * 9}`; Object.assign(vid.style, { width: "100%", height: "100%", left: "0", top: "0" });
+    $("hint").textContent = g.cams.length === 1 ? "Cam " + g.cams[0].cam : "Grid"; }
+  else { stage.style.aspectRatio = "16 / 9"; const col = focus % c, row = Math.floor(focus / c);
+    Object.assign(vid.style, { width: c * 100 + "%", height: r * 100 + "%", left: -col * 100 + "%", top: -row * 100 + "%" }); $("hint").textContent = "Cam " + g.cams[focus].cam; }
+  document.querySelectorAll(".cam").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.i === focus)));
+  buildXCams(); xInfo();
+}
+document.querySelectorAll(".mode").forEach(b => b.onclick = () => { if (b.disabled) return; mode = b.dataset.mode; if (mode !== "switch" && recOn) setRec(false); layout(); });
+
+function updMarks() {
+  $("xIn").textContent = mIn == null ? "not set" : tc(mIn); $("xOut").textContent = mOut == null ? "not set" : tc(mOut);
+  $("xLen").textContent = mIn != null && mOut != null && mOut > mIn ? tc(mOut - mIn) : "–";
+  const r = $("range"), d = g ? g.dur : 1;
+  if (mIn != null || mOut != null) { const a = (mIn ?? 0) / d * 100, b = (mOut ?? d) / d * 100; r.hidden = false; r.style.left = a + "%"; r.style.width = Math.max(0, b - a) + "%"; } else r.hidden = true;
+  xInfo(); drawSheet();
+}
+function tick() {
+  const t = vid.currentTime || 0, d = (isFinite(vid.duration) && vid.duration) || (g ? g.dur : 0);
+  $("now").textContent = tc(t); $("dur").textContent = "/ " + tc(d); $("head").style.left = (d ? t / d * 100 : 0) + "%";
+  if (document.activeElement !== $("seek")) $("seek").value = d ? Math.round(t / d * 1000) : 0;
+  if (g) { const show = mode === "view" && focus >= 0 ? [g.cams[focus]] : mode === "switch" ? [g.cams[live]] : g.cams;
+    $("src").innerHTML = ""; $("src").append(document.createTextNode("Source: " + show.map(c => `${c.cam} ${c.clip.slice(0, 8)} @ ${tc((c.start || 0) + t)}`).join(" · "))); }
+  if (loopOn && mIn != null && mOut != null && t >= mOut) vid.currentTime = mIn;
+  if (mode === "sheet") drawSheet();
+  if (mode === "switch") {
+    if (follow) { const segs = cutSegs(); const i = camAt(t); if (i !== live) { live = i; tally(); }
+      if (segs.length && t >= segs[segs.length - 1].b) { vid.pause(); follow = false; $("follow").setAttribute("aria-pressed", "false"); } }
+    $("phead").style.left = (d ? t / d * 100 : 0) + "%"; if (recOn) renderCuts(); drawPgm(); }
+}
+vid.addEventListener("timeupdate", tick); vid.addEventListener("seeked", tick); vid.addEventListener("loadeddata", tick);
+vid.addEventListener("play", () => $("play").textContent = "Pause"); vid.addEventListener("pause", () => $("play").textContent = "Play");
+(function raf() { if (!vid.paused) tick(); requestAnimationFrame(raf); })();
+const step = s => { vid.pause(); vid.currentTime = Math.max(0, Math.min((vid.duration || g.dur) - 0.01, vid.currentTime + s)); };
+const toggle = () => vid.paused ? vid.play().catch(() => {}) : vid.pause();
+$("play").onclick = toggle; $("back").onclick = () => step(-1 / FPS); $("fwd").onclick = () => step(1 / FPS);
+$("seek").oninput = e => { vid.currentTime = e.target.value / 1000 * (vid.duration || g.dur); };
+$("rate").onchange = e => vid.playbackRate = +e.target.value;
+$("setIn").onclick = () => { mIn = vid.currentTime; if (mOut != null && mOut <= mIn) mOut = null; updMarks(); };
+$("setOut").onclick = () => { mOut = vid.currentTime; if (mIn != null && mIn >= mOut) mIn = null; updMarks(); };
+$("loop").onclick = () => { if (mIn == null || mOut == null) { xStatus("Set an in and an out point first.", true); return; }
+  loopOn = !loopOn; $("loop").textContent = loopOn ? "Stop loop" : "Play in→out"; if (loopOn) { vid.currentTime = mIn; vid.play().catch(() => {}); } };
+
+document.addEventListener("keydown", e => {
+  if (!g || /TEXTAREA|INPUT|SELECT/.test(e.target.tagName) && e.target.id !== "seek") return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key;
+  if (k === " ") { e.preventDefault(); toggle(); }
+  else if (k === "ArrowLeft") { e.preventDefault(); step(e.shiftKey ? -1 : -1 / FPS); }
+  else if (k === "ArrowRight") { e.preventDefault(); step(e.shiftKey ? 1 : 1 / FPS); }
+  else if (k === "i" || k === "I") $("setIn").click();
+  else if (k === "o" || k === "O") $("setOut").click();
+  else if ((k === "s" || k === "S") && g.cams.length > 1) { mode = mode === "switch" ? "view" : "switch"; if (mode !== "switch" && recOn) setRec(false); layout(); }
+  else if ((k === "r" || k === "R") && mode === "switch") setRec(!recOn);
+  else if (/^[1-9]$/.test(k) && +k <= g.cams.length) { e.preventDefault(); const i = +k - 1;
+    if (mode === "switch") cut(i); else if (mode === "sheet") shToggle(g.cams[i].cam); else if (g.cams.length > 1) { focus = i; layout(); } }
+  else if (k === "g" || k === "G") { focus = -1; layout(); }
+});
+
+/* ---------- switcher ---------- */
+function buildTiles() {
+  const t = $("srcs"); t.innerHTML = ""; srcCtx = [];
+  g.cams.forEach((c, i) => { const b = el("button", "tile"); b.type = "button"; b.title = `Cut to Cam ${c.cam} (key ${i + 1})`;
+    const cv = el("canvas"); cv.width = 320; cv.height = 180; b.append(cv, el("span", "num", `${i + 1} · ${c.cam}${c.desc ? " · " + c.desc.toLowerCase() : ""}`)); b.onclick = () => cut(i); t.append(b); srcCtx.push(cv.getContext("2d")); });
+}
+function tally() { document.querySelectorAll(".tile").forEach((b, i) => b.classList.toggle("live", i === live)); if (g) $("pgmTag").textContent = `LIVE · ${g.cams[live].cam}${g.cams[live].desc ? " · " + g.cams[live].desc.toLowerCase() : ""}`; $("recTag").hidden = !recOn; }
+const tileRect = i => { const tw = vid.videoWidth / g.cols, th = vid.videoHeight / g.rows; return [(i % g.cols) * tw, Math.floor(i / g.cols) * th, tw, th]; };
+function drawPgm() { if (mode !== "switch" || !g || vid.readyState < 2 || !vid.videoWidth) return;
+  pgmCtx.drawImage(vid, ...tileRect(live), 0, 0, 640, 360); srcCtx.forEach((cx, i) => cx.drawImage(vid, ...tileRect(i), 0, 0, 320, 180)); }
+function cut(i) { if (!g || i >= g.cams.length) return; if (follow) { follow = false; $("follow").setAttribute("aria-pressed", "false"); }
+  live = i; tally(); drawPgm();
+  if (recOn) { const t = vid.currentTime, last = cuts[cuts.length - 1]; if (last && Math.abs(last.t - t) < 1 / FPS) last.i = i; else if (!last || last.i !== i) cuts.push({ t, i }); renderCuts(); } }
+function camAt(t) { let i = cuts.length ? cuts[0].i : live; for (const c of cuts) { if (c.t <= t + 1e-3) i = c.i; else break; } return i; }
+function setRec(on) {
+  if (on) { cuts = [{ t: vid.currentTime, i: live }]; cutEnd = null; recOn = true; follow = false; $("follow").setAttribute("aria-pressed", "false"); vid.play().catch(() => {}); }
+  else if (recOn) { recOn = false; cutEnd = vid.currentTime; cuts = cuts.filter(c => c.t < cutEnd); }
+  $("rec").setAttribute("aria-pressed", String(recOn)); $("rec").textContent = recOn ? "■ Stop recording" : "● Record cuts"; tally(); renderCuts(); }
+function cutSegs() { const end = recOn ? vid.currentTime : cutEnd; if (!cuts.length || end == null) return [];
+  return cuts.map((c, k) => ({ i: c.i, a: c.t, b: k + 1 < cuts.length ? cuts[k + 1].t : end })).filter(s => s.b > s.a); }
+function renderCuts() {
+  const s = $("strip"); s.querySelectorAll(".seg").forEach(n => n.remove()); const d = g ? g.dur : 1, segs = cutSegs();
+  segs.forEach(x => { const e = el("div", "seg", g.cams[x.i].cam); e.style.left = x.a / d * 100 + "%"; e.style.width = (x.b - x.a) / d * 100 + "%"; e.style.background = CAMCOL[x.i % CAMCOL.length]; s.insertBefore(e, $("phead")); });
+  $("cutInfo").textContent = recOn ? `Recording · ${cuts.length} shot${cuts.length === 1 ? "" : "s"}` : segs.length ? `${segs.length} shots · ${tc(segs[segs.length - 1].b - segs[0].a)}` : "Press Record, play, and hit 1–8 to cut.";
+  $("cutSummary").textContent = segs.length ? `${segs.length} shots: ${segs.map(x => g.cams[x.i].cam).join(" › ")} · ${tc(segs[segs.length - 1].b - segs[0].a)}` : "Record a cut in the Switcher, then export it here.";
+}
+$("rec").onclick = () => setRec(!recOn);
+$("clearCuts").onclick = () => { if (recOn) setRec(false); cuts = []; cutEnd = null; follow = false; $("follow").setAttribute("aria-pressed", "false"); renderCuts(); };
+$("follow").onclick = () => { if (!cutSegs().length) { $("cutInfo").textContent = "Record a cut first."; return; } if (recOn) setRec(false);
+  follow = !follow; $("follow").setAttribute("aria-pressed", String(follow)); if (follow) { vid.currentTime = cuts[0].t; live = cuts[0].i; tally(); vid.play().catch(() => {}); } };
+
+/* ---------- video sheet ---------- */
+const shCams = () => g ? g.cams.map((c, i) => ({ c, i })).filter(x => shSel.has(x.c.cam)) : [];
+function shGrid(n) { const v = $("shLayout").value; if (v === "row") return [n, 1]; if (v !== "auto") { const cols = Math.min(+v, n); return [cols, Math.ceil(n / cols)]; }
+  const cols = n <= 3 ? n : n === 4 ? 2 : n <= 6 ? 3 : 4; return [cols, Math.ceil(n / cols)]; }
+function buildSheetCtl() {
+  const box = $("shCams"); box.innerHTML = "";
+  g.cams.forEach((c, i) => { const b = el("button", "chip", `${i + 1} · ${c.cam}`); b.type = "button"; b.setAttribute("aria-pressed", String(shSel.has(c.cam))); b.onclick = () => shToggle(c.cam); box.append(b); });
+  const L = $("shLabelList"); L.innerHTML = ""; $("shLabelEdit").hidden = $("shLabels").value === "none";
+  shCams().forEach(({ c }) => { const inp = el("input"); inp.type = "text"; inp.value = shLab[c.cam]; inp.setAttribute("aria-label", "Label for Cam " + c.cam);
+    inp.oninput = () => { shLab[c.cam] = inp.value; drawSheet(); }; L.append(el("b", "", c.cam), inp); });
+  xInfo();
+}
+function shToggle(cam) { shSel.has(cam) ? shSel.delete(cam) : shSel.add(cam); buildSheetCtl(); drawSheet(); }
+function drawSheet() {
+  if (mode !== "sheet" || !g) return;
+  const cv = $("sheetCanvas"), x = shCtx, sel = shCams(), n = Math.max(1, sel.length), [cols, rows] = shGrid(n);
+  const W = 1280, pw = W / cols, ph = pw * 9 / 16, tb = $("shTitle").checked ? Math.round(W * 0.03) : 0, H = Math.round(ph * rows + tb);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  x.fillStyle = "#000"; x.fillRect(0, 0, W, H); x.textBaseline = "middle";
+  if (tb) { x.fillStyle = "#fff"; x.font = `600 ${Math.round(tb * 0.55)}px Helvetica, Arial, sans-serif`; x.fillText($("shTitleText").value, tb / 2, tb / 2); }
+  if (!sel.length) { x.fillStyle = "#8b939d"; x.font = "18px Archivo, sans-serif"; x.fillText("Pick at least one camera", 16, tb + 30); return; }
+  const ready = vid.readyState >= 2 && vid.videoWidth;
+  sel.forEach((s, k) => { const dx = (k % cols) * pw, dy = tb + Math.floor(k / cols) * ph;
+    if (ready) x.drawImage(vid, ...tileRect(s.i), dx, dy, pw, ph);
+    const L = $("shLabels").value === "none" ? "" : shLab[s.c.cam]; if (!L) return; const fs = Math.max(11, Math.round(pw * 0.032));
+    x.font = `${fs}px Helvetica, Arial, sans-serif`; const w = Math.min(x.measureText(L).width, pw - 24), pad = Math.max(4, Math.round(pw * 0.008));
+    x.fillStyle = "rgba(0,0,0,.65)"; x.fillRect(dx + pw * 0.012 - pad, dy + pw * 0.012 - pad, w + pad * 2, fs + pad * 2); x.fillStyle = "#ffd400"; x.fillText(L, dx + pw * 0.012, dy + pw * 0.012 + fs / 2, pw - 24); });
+}
+["shLayout", "shTitle"].forEach(id => $(id).addEventListener("change", () => { drawSheet(); xInfo(); }));
+$("shLabels").addEventListener("change", () => { buildSheetCtl(); drawSheet(); });
+$("shTitleText").addEventListener("input", drawSheet);
+
+/* ---------- export ---------- */
+function buildXCams() { const box = $("xCams"); box.innerHTML = ""; if (!g) return;
+  g.cams.forEach(c => { const b = el("button", "chip", c.cam); b.type = "button"; b.setAttribute("aria-pressed", String(xSel.has(c.cam)));
+    b.onclick = () => { xSel.has(c.cam) ? xSel.delete(c.cam) : xSel.add(c.cam); buildXCams(); xInfo(); }; box.append(b); }); }
+function xInfo() {
+  const i = $("xInfo"); i.innerHTML = ""; if (!g) return;
+  const len = mIn != null && mOut != null && mOut > mIn ? mOut - mIn : null;
+  if (mode === "view") i.append(document.createTextNode(`${xSel.size} camera file${xSel.size === 1 ? "" : "s"}, full quality from the server` + (len == null ? " · set in and out" : "")));
+  if (mode === "sheet") { const n = shCams().length, [c, r] = shGrid(Math.max(1, n)), pw = Math.floor(3840 / c / 2) * 2, ph = Math.round(pw * 9 / 16 / 2) * 2;
+    i.append(document.createTextNode(`${n} panel${n === 1 ? "" : "s"} · ${c}×${r} · 3840×${ph * r + ($("shTitle").checked ? 116 : 0)}` + (len == null ? " · set in and out" : "")));
+    if (len > 30) i.append(el("span", "warn", "Over 30 s: too long for one Seedance reference.")); }
+  if (mode === "switch") i.append(document.createTextNode("Cut renders at the cameras' full size with Cam " + g.cams[g.ref || 0].cam + "'s sound."));
+}
+function xStatus(m, err) { $("xStatus").textContent = m; $("xStatus").className = "status" + (err ? " err" : ""); }
+$("doExport").onclick = async () => {
+  if (!g) return; let req;
+  const base = { take: g.id, scene: curScene || null, format: $("fmt").value };
+  if (mode === "switch") { const segs = cutSegs(); if (!segs.length) return xStatus("Record a cut in the Switcher first.", true);
+    req = { ...base, type: "cut", in: segs[0].a, out: segs[segs.length - 1].b, cuts: segs.map(x => ({ cam: g.cams[x.i].cam, t_in: x.a, t_out: x.b })) }; }
+  else { if (mIn == null || mOut == null || mOut <= mIn) return xStatus("Set an in and an out point first.", true);
+    if (mode === "sheet") { const sel = shCams(); if (!sel.length) return xStatus("Pick at least one camera.", true); const [cols, rows] = shGrid(sel.length);
+      const labels = {}; if ($("shLabels").value !== "none") sel.forEach(s => labels[s.c.cam] = shLab[s.c.cam]);
+      req = { ...base, type: "sheet", in: mIn, out: mOut, cams: sel.map(s => s.c.cam), cols, rows, labels, title: $("shTitle").checked, titleText: $("shTitleText").value, audio: $("shAudio").checked }; }
+    else { if (!xSel.size) return xStatus("Pick at least one camera.", true); req = { ...base, type: "cams", in: mIn, out: mOut, cams: g.cams.filter(c => xSel.has(c.cam)).map(c => c.cam) }; } }
+  const li = el("li", "exp"); const name = req.type === "cut" ? "Live cut" : req.type === "sheet" ? `Sheet ${req.cams.join("")}` : `Cams ${req.cams.join(" ")}`;
+  li.append(el("b", "", `${name} · ${g.title.slice(0, 8)} · ${tc(req.in)}–${tc(req.out)}`)); const m = el("div", "m", "Queued"), bar = el("div", "prog"), bi = el("i"); bar.append(bi); li.append(m, bar);
+  $("expEmpty").hidden = true; $("exports").prepend(li); xStatus("");
+  try { const j = await api("/api/export", req); const res = await waitJob(j.id, s => { bi.style.width = s.progress * 100 + "%"; m.textContent = s.msg; });
+    bar.remove(); m.textContent = res.files.map(f => f.split("/").pop()).join(", ");
+    const a = el("button", "btn", "Show in Finder"); a.type = "button"; a.style.marginTop = "5px"; a.onclick = () => api("/api/reveal", { path: res.files[0] }); li.append(a); }
+  catch (e) { bar.remove(); m.textContent = ""; li.append(el("div", "e", e.message)); }
+};
+
+/* ---------- 4K still of the current frame ---------- */
+async function takeStill() {
+  if (!g) return; vid.pause(); const t = +vid.currentTime.toFixed(3); let body, what;
+  if (mode === "sheet") { const sel = shCams(); if (!sel.length) return xStatus("Pick at least one camera for the sheet.", true); const [cols, rows] = shGrid(sel.length);
+    const labels = {}; if ($("shLabels").value !== "none") sel.forEach(s => labels[s.c.cam] = shLab[s.c.cam]);
+    body = { take: g.id, scene: curScene || null, t, sheet: { cams: sel.map(s => s.c.cam), cols, rows, labels, title: $("shTitle").checked, titleText: $("shTitleText").value } };
+    what = `Sheet still ${sel.map(s => s.c.cam).join("")}`; }
+  else { const cams = mode === "switch" ? [g.cams[live].cam] : focus >= 0 ? [g.cams[focus].cam] : g.cams.filter(c => xSel.has(c.cam)).map(c => c.cam);
+    if (!cams.length) return xStatus("Pick at least one camera under Export.", true);
+    body = { take: g.id, scene: curScene || null, t, cams }; what = `Still · ${cams.join(" ")}`; }
+  const li = el("li", "exp"); li.append(el("b", "", `${what} · ${tc(t)}`)); const m = el("div", "m", "Saving…"); li.append(m);
+  $("expEmpty").hidden = true; $("exports").prepend(li);
+  try { const j = await api("/api/still", body); const res = await waitJob(j.id);
+    m.textContent = res.files.map(f => f.split("/").pop()).join(", ") + (res.notes.length ? " · " + res.notes.join(" · ") : "");
+    const a = el("button", "btn", "Show in Finder"); a.type = "button"; a.style.marginTop = "5px"; a.onclick = () => api("/api/reveal", { path: res.files[0] }); li.append(a); }
+  catch (e) { m.textContent = ""; li.append(el("div", "e", e.message)); }
+}
+$("still").onclick = takeStill;
+document.addEventListener("keydown", e => { if (!g || /TEXTAREA|INPUT|SELECT/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === "p" || e.key === "P") { e.preventDefault(); takeStill(); } });
+status(); loadSceneGrid();
+if (location.hash.length > 1) { $("q").value = decodeURIComponent(location.hash.slice(1)); findScene(); }
+</script>
+</body></html>
